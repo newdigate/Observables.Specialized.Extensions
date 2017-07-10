@@ -1,4 +1,4 @@
-#namespace Observables.Specialized.Extensions
+#Observables.Specialized.Extensions namespace
 
  - observable dictionary with snapshot and update events
 

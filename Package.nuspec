@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<package >
+  <metadata>
+    <id>Observables.Specialized.Extensions</id>
+    <version>1.0.0</version>
+    <authors>Nic Newdigate</authors>
+    <owners>Nic Newdigate</owners>
+    <projectUrl>https://github.com/newdigate/Observables.Specialized.Extensions</projectUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>IObservableDictionary&lt;TKey,TValue&gt;></description>
+    <releaseNotes>Initial package</releaseNotes>
+    <copyright>Copyright 2017</copyright>
+    <tags>Reactive rx observer dictionary</tags>
+    <dependencies/>
+  </metadata>
+</package>
