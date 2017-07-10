@@ -1,7 +1,7 @@
 # Observables.Specialized.Extensions
 C# Observable Dictionary
 
-```
+``` csharp
             IObservableDictionary<string, string> obsDict = new ObservableDictionary<string, string>();
             obsDict.GetOrAdd("existing", c => "existing");
 
