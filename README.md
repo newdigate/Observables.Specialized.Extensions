@@ -1,5 +1,6 @@
-# Observables.Specialized.Extensions
-C# Observable Dictionary
+#namespace Observables.Specialized.Extensions
+
+ - observable dictionary with snapshot and update events
 
 ``` csharp
             IObservableDictionary<string, string> obsDict = new ObservableDictionary<string, string>();
@@ -13,4 +14,10 @@ C# Observable Dictionary
                 }
             );
             obsDict.GetOrAdd("next", c => "next");
+```
+
+- output
+```
+itemAdded existing existing [ -1 ]
+itemAdded next next [ 2 ]
 ```
