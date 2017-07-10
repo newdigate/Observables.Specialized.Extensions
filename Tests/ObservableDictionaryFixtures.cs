@@ -17,12 +17,21 @@ namespace Observables.Specialized.Extensions.Tests
                 c =>
                 {
                     actualNumberOfEvents++;
-                    Console.WriteLine($" {c.EventType} {c.Key} {c.Value}");
+                    Console.WriteLine($" {c.EventType} {c.Key} {c.Value} [ {c.StateOfWorld} ]");
                 }
             );
             obsDict.GetOrAdd("next", c => "next");
-
             Assert.Equal(expectedNumberOfEvents, actualNumberOfEvents);
+
+			IDisposable d2 = obsDict.Subscribe(
+				c =>
+				{
+					actualNumberOfEvents++;
+					Console.WriteLine($" -----> {c.EventType} {c.Key} {c.Value} [ {c.StateOfWorld} ]");
+				}
+		    );
+
+			obsDict.GetOrAdd("next11", c => "next11");
         }
     }
 }

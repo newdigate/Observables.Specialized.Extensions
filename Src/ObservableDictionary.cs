@@ -4,7 +4,6 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Linq;
-using System.Reactive.Subjects;
 using System.Threading;
 
 namespace Observables.Specialized.Extensions
@@ -14,7 +13,7 @@ namespace Observables.Specialized.Extensions
 		private readonly ConcurrentDictionary<TKey, TValue> _dictionary;
 		private long _stateOfWorld;
 
-		private Action<DictionaryUpdatedEventMessage<TKey, TValue>> _dictionaryUpdatedEventHandler = d => { };
+		private Action<DictionaryUpdatedEventMessage<TKey, TValue>> _dictionaryUpdatedEventHandler;
 
 		public ObservableDictionary()
 		{
@@ -22,17 +21,19 @@ namespace Observables.Specialized.Extensions
 			_dictionary = new ConcurrentDictionary<TKey, TValue>();
 		}
 
+		#region IDictionary<TKey, TValue> implementation
 		TValue IDictionary<TKey, TValue>.this[TKey key] { get => _dictionary[key]; set => _dictionary[key] = value; }
-
-		public int Count => _dictionary.Count;
-
-		public bool IsReadOnly => false;
-
-		public long StateOfWorld => _stateOfWorld;
 
 		ICollection<TKey> IDictionary<TKey, TValue>.Keys => _dictionary.Keys;
 
 		ICollection<TValue> IDictionary<TKey, TValue>.Values => _dictionary.Values;
+        #endregion
+
+        public int Count => _dictionary.Count;
+
+		public bool IsReadOnly => false;
+
+		public long StateOfWorld => _stateOfWorld;
 
 		int ICollection<KeyValuePair<TKey, TValue>>.Count => _dictionary.Keys.Count;
 
@@ -51,7 +52,9 @@ namespace Observables.Specialized.Extensions
 				{
 					TValue v = addValueFactory(k);
 					Interlocked.Increment(ref _stateOfWorld);
-					_dictionaryUpdatedEventHandler?.Invoke(new DictionaryUpdatedEventMessage<TKey, TValue>(DictionaryUpdatedEventType.itemAdded, k, v));
+                    _dictionaryUpdatedEventHandler?.Invoke(
+                        new DictionaryUpdatedEventMessage<TKey, TValue>(
+                            DictionaryUpdatedEventType.itemAdded, k, v, _stateOfWorld));
 					return v;
 				};
 
@@ -60,7 +63,9 @@ namespace Observables.Specialized.Extensions
 				{
 					TValue r = updateValueFactory(k, v);
 					Interlocked.Increment(ref _stateOfWorld);
-					_dictionaryUpdatedEventHandler?.Invoke(new DictionaryUpdatedEventMessage<TKey, TValue>(DictionaryUpdatedEventType.itemUpdated, k, v));
+					_dictionaryUpdatedEventHandler?.Invoke(
+                        new DictionaryUpdatedEventMessage<TKey, TValue>(
+                            DictionaryUpdatedEventType.itemUpdated, k, v, _stateOfWorld));
 					return r;
 				};
 
@@ -75,7 +80,9 @@ namespace Observables.Specialized.Extensions
 				{
 					TValue r = updateValueFactory(k, v);
 					Interlocked.Increment(ref _stateOfWorld);
-					_dictionaryUpdatedEventHandler?.Invoke(new DictionaryUpdatedEventMessage<TKey, TValue>(DictionaryUpdatedEventType.itemAdded, k, v));
+					_dictionaryUpdatedEventHandler?.Invoke(
+                        new DictionaryUpdatedEventMessage<TKey, TValue>(
+                            DictionaryUpdatedEventType.itemAdded, k, v, _stateOfWorld));
 					return r;
 				};
 
@@ -89,7 +96,12 @@ namespace Observables.Specialized.Extensions
 			Interlocked.Increment(ref _stateOfWorld);
 			if (_dictionaryUpdatedEventHandler != null)
 				values.ForEach(
-					value => _dictionaryUpdatedEventHandler?.Invoke(new DictionaryUpdatedEventMessage<TKey, TValue>(DictionaryUpdatedEventType.itemRemoved, value.Key, value.Value)));
+					value => _dictionaryUpdatedEventHandler?.Invoke(
+                        new DictionaryUpdatedEventMessage<TKey, TValue>(
+                            DictionaryUpdatedEventType.itemRemoved, 
+                            value.Key, 
+                            value.Value, 
+                            _stateOfWorld)));
 		}
 
 		public bool Contains(KeyValuePair<TKey, TValue> item)
@@ -112,7 +124,10 @@ namespace Observables.Specialized.Extensions
 			Func<TKey, TValue> valueFactoryWrapper = k =>
 			{
 				TValue v = valueFactory(k);
-				_dictionaryUpdatedEventHandler?.Invoke(new DictionaryUpdatedEventMessage<TKey, TValue>(DictionaryUpdatedEventType.itemAdded, k, v));
+                Interlocked.Increment(ref _stateOfWorld);
+                _dictionaryUpdatedEventHandler?.Invoke(
+                    new DictionaryUpdatedEventMessage<TKey, TValue>(
+                        DictionaryUpdatedEventType.itemAdded, k, v, _stateOfWorld));
 				return v;
 			};
 			return _dictionary.GetOrAdd(key, valueFactoryWrapper);
@@ -124,7 +139,12 @@ namespace Observables.Specialized.Extensions
 			bool result = _dictionary.TryRemove(key, out value);
 			if (result)
 			{
-				_dictionaryUpdatedEventHandler?.Invoke(new DictionaryUpdatedEventMessage<TKey, TValue>(DictionaryUpdatedEventType.itemRemoved, key, value));
+				_dictionaryUpdatedEventHandler?.Invoke(
+                    new DictionaryUpdatedEventMessage<TKey, TValue>(
+                        DictionaryUpdatedEventType.itemRemoved, 
+                        key, 
+                        value,
+                        _stateOfWorld));
 			}
 			return result;
 		}
@@ -220,26 +240,24 @@ namespace Observables.Specialized.Extensions
 					h => _dictionaryUpdatedEventHandler -= h);
 
 			IEnumerable<DictionaryUpdatedEventMessage<TKey, TValue>> enumerable = _dictionary.Select(
-					k => new DictionaryUpdatedEventMessage<TKey, TValue>(DictionaryUpdatedEventType.itemAdded, k.Key, k.Value));
+			    k => new DictionaryUpdatedEventMessage<TKey, TValue>(DictionaryUpdatedEventType.itemAdded, k.Key, k.Value, -1));
 
-			List<DictionaryUpdatedEventMessage<TKey, TValue>> list = enumerable.ToList();
-
-			IObservable<DictionaryUpdatedEventMessage<TKey, TValue>> snap =
-				list.ToObservable();
-
+			IObservable<DictionaryUpdatedEventMessage<TKey, TValue>> snap = enumerable.ToObservable();
+            long stateOfWorldTarget = _stateOfWorld;
 			return snap
-				.Concat(obs)
+                .Concat(
+                    obs.Where( u => u.StateOfWorld > stateOfWorldTarget))
 				.Subscribe(observer);
 		}
 
 		bool IDictionary<TKey, TValue>.TryGetValue(TKey key, out TValue value)
 		{
-			throw new NotImplementedException();
+			return _dictionary.TryGetValue(key, out value);
 		}
 
 		bool IObservableDictionary<TKey, TValue>.TryRemove(TKey key, out TValue value)
 		{
-			throw new NotImplementedException();
+            return _dictionary.TryRemove(key, out value);
 		}
 
 		#endregion
