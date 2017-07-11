@@ -11,6 +11,7 @@ namespace Observables.Specialized.Extensions
 		IObservable<DictionaryUpdatedEventMessage<TKey, TValue>>
 	{
 		bool TryRemove(TKey key, out TValue value);
+		TValue AddOrUpdate(TKey key, Func<TKey, TValue> addValueFactory, Func<TKey, TValue, TValue> updateValueFactory);
 		TValue GetOrAdd(TKey key, Func<TKey, TValue> valueFactory);
 		long StateOfWorld { get; }
 	}

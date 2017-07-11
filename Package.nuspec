@@ -12,5 +12,8 @@
     <copyright>Copyright 2017</copyright>
     <tags>Reactive rx observer dictionary</tags>
     <dependencies/>
+    <packageTypes>
+        <packageType name="DotnetCliTool" />
+    </packageTypes>
   </metadata>
 </package>
