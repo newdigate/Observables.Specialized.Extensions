@@ -1,6 +1,9 @@
-#Observables.Specialized.Extensions namespace
+# Observables.Specialized.Extensions
 
- - observable dictionary with snapshot and update events
+``` csharp
+ public class ObservableDictionary<TKey, TValue> : IObservableDictionary<TKey, TValue> { }
+ /// observable dictionary with snapshot and update events  
+```
 
 ``` csharp
             IObservableDictionary<string, string> obsDict = new ObservableDictionary<string, string>();
